@@ -1,0 +1,58 @@
+
+#include "SPI.h"
+
+const int PGA_CS_PIN = 11;
+const int PGA_SCLK_PIN = 13;
+const int PGA_SDI_PIN = 12;
+
+int timedelay = 100;
+int volumeLevel = 1;
+
+void setup() {
+pinMode(PGA_CS_PIN,OUTPUT);  //initialize pins
+pinMode(PGA_SCLK_PIN,OUTPUT);
+pinMode(PGA_SDI_PIN,OUTPUT);
+digitalWrite(PGA_CS_PIN,HIGH);
+digitalWrite(PGA_SCLK_PIN,HIGH);
+digitalWrite(PGA_SDI_PIN,HIGH);
+}
+
+void PGA_set_volume(byte value)
+{
+byte shifted_val = (value << 1);
+digitalWrite(PGA_CS_PIN, LOW);     // assert CS
+SPI_write(shifted_val);            // left value (0..255)
+SPI_write(shifted_val);            // right value (0..255)
+digitalWrite(PGA_CS_PIN, HIGH);    // deassert CS
+
+}
+
+static inline void SPI_write(byte out_spi_byte)
+{
+  byte i;
+  // loop thru each of the 8-bits in the byte
+  for (i=0; i < 8; i++) {
+  // strobe clock
+  digitalWrite(PGA_SCLK_PIN, LOW);
+  // send the bit (we look at the high order bit and 'print' that to the remoote device)
+  if (0x80 & out_spi_byte)    // MSB is set
+    digitalWrite(PGA_SDI_PIN, HIGH);
+  else
+    digitalWrite(PGA_SDI_PIN, LOW);
+  // unstrobe the clock ;)
+  digitalWrite(PGA_SCLK_PIN, HIGH);
+  out_spi_byte <<= 1;   // left-shift the byte by 1 bit
+}
+}
+
+void loop()
+{
+ // Reset the volumeLevel if it goes over 128. I think it can actually go 255.
+ if (volumeLevel > 127) {
+   volumeLevel = 1;
+ }
+ // Set the volume
+ PGA_set_volume(volumeLevel);
+ delay(timedelay);
+ volumeLevel = volumeLevel + 1;
+}
